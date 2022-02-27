@@ -22,6 +22,8 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.Ultrasonic;
+import edu.wpi.first.wpilibj.smartdashboard.*;
+import edu.wpi.first.wpilibj.AnalogInput;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -34,6 +36,10 @@ public class Robot extends TimedRobot {
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
+  private double lrf_distance, rrf_distance, ballfinder_distance;
+
+
+
 
 private final PWMVictorSPX leftMotor = new PWMVictorSPX(0);
 private final PWMVictorSPX rightMotor = new PWMVictorSPX(1);
@@ -45,6 +51,11 @@ private final Timer a_timer = new Timer();
 private final Spark left_shooter = new Spark(4);
 private final Spark right_shooter = new Spark(5);
 private boolean isLiftTime;
+private final AnalogInput lrf = new AnalogInput(3);
+private final  AnalogInput rrf = new AnalogInput(2);
+private final  AnalogInput ballfinder = new AnalogInput(1);
+private final Timer intakeTimer = new Timer();
+private boolean ball;
 //private final Encoder encoder = new Encoder(0,1);
 //private final Encoder leftencoder = new Encoder(2,3);
 
@@ -63,6 +74,8 @@ private boolean isLiftTime;
     right_shooter.setInverted(true);
     isLiftTime = false;
     
+
+    
     
   }
   /**
@@ -73,7 +86,14 @@ private boolean isLiftTime;
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {  }
+  public void robotPeriodic() {  lrf_distance = lrf.getVoltage() / 0.00977;
+    rrf_distance = rrf.getVoltage() / 0.00977;
+    ballfinder_distance = ballfinder.getVoltage() / 0.00977;
+   SmartDashboard.putNumber("ballfinder", ballfinder_distance);
+  SmartDashboard.putNumber("rrf", rrf_distance);
+  SmartDashboard.putNumber("lrf", lrf_distance);
+
+ }
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
@@ -128,14 +148,26 @@ private boolean isLiftTime;
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+   
+    
+  }
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
     robotDrive.arcadeDrive(stick.getY(), stick.getX());
-    
-    
+
+    if(ballfinder_distance < 35.000 || ballfinder_distance > 39){ 
+      ball = true;}
+    else{
+      ball = false;
+    }
+
+    if()
+
+
+
 
     if(stick.getRawButtonReleased(1))
         isLiftTime = !isLiftTime;
@@ -154,13 +186,17 @@ private boolean isLiftTime;
         //right_shooter.set(stick.getRawAxis(5));
         //left_shooter.set(stick.getRawAxis(5));
       }
-intake.set(stick.getRawAxis(3) - stick.getRawAxis(2));
+      if(ball) {
+        intake.set(-0.5);
+      } else { 
+        intake.set(stick.getRawAxis(3) - stick.getRawAxis(2));
+      }
 
     if (stick.getRawButton(5)) {
       right_shooter.set(-0.75);
     }
     else if (stick.getRawButton(6)){
-      right_shooter.set(-0.50);
+      right_shooter.set(-0.45);
     }
     else {
       right_shooter.set(0.0); 
