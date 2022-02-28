@@ -41,23 +41,25 @@ public class Robot extends TimedRobot {
 
 
 
-private final PWMVictorSPX leftMotor = new PWMVictorSPX(0);
-private final PWMVictorSPX rightMotor = new PWMVictorSPX(1);
-private final Spark lift = new Spark(3);
-private final Spark intake = new Spark(2); //single motor
-private final DifferentialDrive robotDrive = new DifferentialDrive(leftMotor,rightMotor); // create drive system
-private final Joystick stick = new Joystick(0); // usb device channel 
-private final Timer a_timer = new Timer();
-private final Spark left_shooter = new Spark(4);
-private final Spark right_shooter = new Spark(5);
-private boolean isLiftTime;
-private final AnalogInput lrf = new AnalogInput(3);
-private final  AnalogInput rrf = new AnalogInput(2);
-private final  AnalogInput ballfinder = new AnalogInput(1);
-private final Timer intakeTimer = new Timer();
-private boolean ball;
-//private final Encoder encoder = new Encoder(0,1);
-//private final Encoder leftencoder = new Encoder(2,3);
+  private final PWMVictorSPX leftMotor = new PWMVictorSPX(0);
+  private final PWMVictorSPX rightMotor = new PWMVictorSPX(1);
+  private final Spark lift = new Spark(3);
+  private final Spark intake = new Spark(2); //single motor
+  private final DifferentialDrive robotDrive = new DifferentialDrive(leftMotor,rightMotor); // create drive system
+  private final Joystick stick = new Joystick(0); // usb device channel 
+  private final Timer a_timer = new Timer();
+  private final Spark left_shooter = new Spark(4);
+  private final Spark right_shooter = new Spark(5);
+  private boolean isLiftTime;
+  private final AnalogInput lrf = new AnalogInput(3);
+  private final  AnalogInput rrf = new AnalogInput(2);
+  private final  AnalogInput ballfinder = new AnalogInput(1);
+  //private final Timer intakeTimer = new Timer();
+  private boolean ball;
+  private final Encoder rightencoder = new Encoder(0,1);
+  private final Encoder leftencoder = new Encoder(2,3);
+  private double r_dist,l_dist,r_rate,l_rate;
+  private double right_speed, left_speed;
 
 
   /**
@@ -73,10 +75,10 @@ private boolean ball;
     rightMotor.setInverted(true);
     right_shooter.setInverted(true);
     isLiftTime = false;
-    
-
-    
-    
+    rightencoder.setDistancePerPulse(Math.PI * (6.0/360.0));
+    leftencoder.setDistancePerPulse(Math.PI * (6.0/360.0));
+    rightencoder.reset();
+    leftencoder.reset();
   }
   /**
    * This function is called every robot packet, no matter the mode. Use this for items like
@@ -86,13 +88,21 @@ private boolean ball;
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {  lrf_distance = lrf.getVoltage() / 0.00977;
+  public void robotPeriodic() {  
+    lrf_distance = lrf.getVoltage() / 0.00977;
     rrf_distance = rrf.getVoltage() / 0.00977;
     ballfinder_distance = ballfinder.getVoltage() / 0.00977;
-   SmartDashboard.putNumber("ballfinder", ballfinder_distance);
-  SmartDashboard.putNumber("rrf", rrf_distance);
-  SmartDashboard.putNumber("lrf", lrf_distance);
-
+    SmartDashboard.putNumber("ballfinder", ballfinder_distance);
+    SmartDashboard.putNumber("rrf", rrf_distance);
+    SmartDashboard.putNumber("lrf", lrf_distance);
+    r_dist=rightencoder.getDistance();
+    l_dist=leftencoder.getDistance();
+    r_rate = rightencoder.getRate();
+    l_rate = leftencoder.getRate();
+    SmartDashboard.putNumber("rightencoder",r_dist);
+    SmartDashboard.putNumber("leftencoder",l_dist);
+    SmartDashboard.putNumber("r_rate",r_rate);
+    SmartDashboard.putNumber("l_rate",l_rate);
  }
 
   /**
@@ -113,6 +123,9 @@ private boolean ball;
 
     a_timer.reset();
     a_timer.start(); 
+    right_speed = 0.5;
+    left_speed = 0.5;
+    
   }//end of autonomousInit()
 
   /** This function is called periodically during autonomous. */
@@ -121,7 +134,19 @@ private boolean ball;
     switch (m_autoSelected) {
       case kCustomAuto:
         // Put custom auto code here
-       
+        if (rrf_distance - lrf_distance > 1.0) 
+        {
+          right_speed += .05;
+        } 
+        else if (rrf_distance - lrf_distance < 1.0) 
+        {
+          left_speed -= .05;
+        } 
+        else if (rrf_distance >= 186) 
+        {
+          leftMotor.set(0);
+          rightMotor.set(0);
+        }
         break;
       case kDefaultAuto:
       default:
@@ -129,20 +154,23 @@ private boolean ball;
         if (a_timer.get() <= 2.0) {
           rightMotor.set(0.3);
           leftMotor.set(0.3);
-          intake.set(-0.5);
+          intake.set(-0.3);
         } 
-        if (a_timer.get() >= 2.3 && a_timer.get() < 6.0) {
+        if (a_timer.get() >= 3.0 && a_timer.get() < 6.0) {
           intake.stopMotor();
           robotDrive.arcadeDrive(0, 0.4);
+          right_shooter.set(-0.5);
           
         } 
-        if (a_timer.get() >= 6.3 && a_timer.get() < 8.0) {
-          right_shooter.set(-.75);
-          intake.set(-0.4);
+        if (a_timer.get() >= 6.0 && a_timer.get() < 9.0) {
+          intake.set(-0.9);
+          right_shooter.set(-0.5);
         }
         if (a_timer.get()>=8.0)
           right_shooter.stopMotor();
+
         break;
+        
     }
   }
 
@@ -156,7 +184,7 @@ private boolean ball;
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    robotDrive.arcadeDrive(stick.getY(), stick.getX());
+    robotDrive.arcadeDrive(stick.getY() * -0.8, stick.getX()*0.8);
 
     if(ballfinder_distance < 35.000 || ballfinder_distance > 39){ 
       ball = true;}
@@ -164,9 +192,9 @@ private boolean ball;
       ball = false;
     }
 
-    if()
-
-
+  
+       
+      
 
 
     if(stick.getRawButtonReleased(1))
